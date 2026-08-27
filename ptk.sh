@@ -1,6 +1,6 @@
 #!/bin/bash
 # ==============================================================
-# 端口流量管家 (Port Traffic Keeper) v1.3.8
+# 端口流量管家 (Port Traffic Keeper) v1.3.9
 # 独立的 Linux 端口流量监控/管理脚本（参考"端口流量狗"，重写数据层）
 #
 # 核心设计：磁盘 JSON 是数据本体，nftables 计数器只是增量采集器
@@ -18,7 +18,7 @@
 
 set -u
 
-readonly VERSION="1.3.8"
+readonly VERSION="1.3.9"
 readonly INSTALL_PATH="/usr/local/bin/port-traffic-keeper.sh"
 readonly SHORTCUT="ptk"
 readonly CONF_DIR="/etc/port-traffic-keeper"
@@ -1368,12 +1368,23 @@ do_update() {
         rm -f "$tmp_file"
         exit 1
     fi
+    
+    # 版本对比检查
+    local new_ver; new_ver=$(grep "^readonly VERSION=" "$tmp_file" | cut -d'"' -f2)
+    if [ "$new_ver" = "$VERSION" ]; then
+        echo -e "${GRN}当前已是最新版本 (v$VERSION)，无需更新。${NC}"
+        rm -f "$tmp_file"
+        exit 0
+    fi
 
     # 替换当前脚本
     chmod +x "$tmp_file"
     mv -f "$tmp_file" "$INSTALL_PATH"
     
-    echo -e "${GRN}更新成功！当前版本已替换为 GitHub 上的最新版。${NC}"
+    # 同步刷新定时任务及自启配置
+    install_self
+    
+    echo -e "${GRN}更新成功！当前版本已替换为 GitHub 上的最新版 (v$new_ver)。${NC}"
     echo -e "${YEL}请重新运行 ptk 命令进入主菜单。${NC}"
 }
 
