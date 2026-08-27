@@ -4,6 +4,7 @@
 怎么安装/更新
 
 全新机器第一次装
+
 ```curl -sSL https://raw.githubusercontent.com/shangusl/port-traffic-keeper/main/ptk.sh -o /tmp/ptk.sh
 bash /tmp/ptk.sh```
 
@@ -18,6 +19,7 @@ bash /tmp/ptk.sh```
 
 已有 ptk 的机器升级
 最简单： 直接一条命令
+
 ```ptk update```
 
 脚本会自动从 GitHub 下载最新版替换自己，保留所有配置和流量数据。
