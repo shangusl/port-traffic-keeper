@@ -30,4 +30,3 @@ ptk update
 **注意：**
 - `ptk update` 不会改你的 `config.json` 和 `state.json`，流量数据完全保留。
 - 如果你在 GitHub 上改了什么配置相关的逻辑，更新后跑一次 `ptk --tick` 或直接 `ptk` 进菜单确认就行。
-```
