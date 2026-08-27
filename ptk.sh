@@ -1,17 +1,17 @@
 #!/bin/bash
 # ==============================================================
 # 端口流量管家 (Port Traffic Keeper) v1.3.8
-# 独立的 Linux 端口流量监控/管理脚本（参考"端口流量狗"，重写数据层）
+# 独立�?Linux 端口流量监控/管理脚本（参�?端口流量�?，重写数据层�?
 #
-# 核心设计：磁盘 JSON 是数据本体，nftables 计数器只是增量采集器
-#   - 每分钟 cron 采集增量并原子落盘，重启/断电最多丢 1 分钟数据
-#   - 计数器被清零(重启/flush)时增量逻辑自动兼容，规则自动重建
-#   - 配额判断直接对比"落盘总账 vs 限额"：调低限额立即生效阻断
-#     (修复原版 nft quota 对象换新后从 0 重计、超限却不封的问题)
+# 核心设计：磁�?JSON 是数据本体，nftables 计数器只是增量采集器
+#   - 每分�?cron 采集增量并原子落盘，重启/断电最多丢 1 分钟数据
+#   - 计数器被清零(重启/flush)时增量逻辑自动兼容，规则自动重�?
+#   - 配额判断直接对比"落盘总账 vs 限额"：调低限额立即生效阻�?
+#     (修复原版 nft quota 对象换新后从 0 重计、超限却不封的问�?
 #
-# 功能：端口/端口段监控 | 单双向统计 | 月度配额+超限阻断+自动重置
-#       tc 带宽限速(出站) | 备注增改删 | Telegram + 企业微信通知
-#       导出/导入 | 从"端口流量狗"一键迁移 | 重置历史 | 开机自愈 | 一键更新
+# 功能：端�?端口段监�?| 单双向统�?| 月度配额+超限阻断+自动重置
+#       tc 带宽限�?出站) | 备注增改�?| Telegram + 企业微信通知
+#       导出/导入 | �?端口流量�?一键迁�?| 重置历史 | 开机自�?| 一键更�?
 #
 # 快捷命令: ptk        定时入口: ptk --tick (自动配置)
 # ==============================================================
@@ -49,12 +49,12 @@ fmt_bytes() {
         else                   printf "%dB", b }'
 }
 
-# 100.00GB -> 100GB, 1.50GB -> 1.5GB (用于配额标签的简洁显示)
+# 100.00GB -> 100GB, 1.50GB -> 1.5GB (用于配额标签的简洁显�?
 fmt_bytes_short() {
     fmt_bytes "$1" | sed -E 's/\.00([KMGT]?B)$/\1/; s/([0-9]\.[0-9])0([KMGT]?B)$/\1\2/'
 }
 
-# 分钟数 -> 1m/15m/1h/24h 风格
+# 分钟�?-> 1m/15m/1h/24h 风格
 fmt_interval() {
     local m=${1:-60}
     if [ $((m % 1440)) -eq 0 ]; then echo "$((m/1440))d"
@@ -64,10 +64,10 @@ fmt_interval() {
 
 notify_log() { echo "$(bj_date '+%F %T') $*" >> "$NLOG"; }
 
-# Telegram legacy Markdown 特殊字符转义 (用于代码块之外的动态内容)
+# Telegram legacy Markdown 特殊字符转义 (用于代码块之外的动态内�?
 md_escape() { sed -e 's/[_*`[]/\\&/g' <<< "$1"; }
 
-# "100GB"/"1TB"/"500MB"/"2T" -> 字节数; 非法返回 0
+# "100GB"/"1TB"/"500MB"/"2T" -> 字节�? 非法返回 0
 parse_size() {
     awk -v s="${1:-}" 'BEGIN{
         s=toupper(s); n=s+0;
@@ -98,7 +98,7 @@ fmt_rate() {
         else printf "%dKbps", k }'
 }
 
-# burst = 速率的 50ms 缓冲, 最小 2×MTU (与原版算法一致)
+# burst = 速率�?50ms 缓冲, 最�?2×MTU (与原版算法一�?
 calc_burst() {
     local k=$1
     local b=$(( k * 1000 / 8 / 20 ))
@@ -119,7 +119,7 @@ valid_port_token() {
     fi
 }
 
-# 原子写 json:  jset <文件> <jq参数...>
+# 原子�?json:  jset <文件> <jq参数...>
 jset() {
     local f="$1"; shift
     (
@@ -132,9 +132,9 @@ jset() {
     ) 9>>"${LOCK}.json"
 }
 
-pause() { echo; read -rp "按回车继续..." _; }
+pause() { echo; read -rp "按回车继�?.." _; }
 
-pick_indices() {  # 解析 "1,3,5" 或 all -> 输出选中的端口(每行一个)
+pick_indices() {  # 解析 "1,3,5" �?all -> 输出选中的端�?每行一�?
     local input="$1" n arr=()
     if [ "$input" = "all" ]; then
         printf '%s\n' "${PORT_LIST[@]}"
@@ -149,11 +149,11 @@ pick_indices() {  # 解析 "1,3,5" 或 all -> 输出选中的端口(每行一个
 }
 
 # ---------------------------------------------------------------
-# 依赖与安装
+# 依赖与安�?
 # ---------------------------------------------------------------
 check_root() {
     if [ "$EUID" -ne 0 ]; then
-        echo -e "${RED}错误：需要 root 权限运行${NC}"; exit 1
+        echo -e "${RED}错误：需�?root 权限运行${NC}"; exit 1
     fi
 }
 
@@ -163,7 +163,7 @@ check_deps() {
         command -v "$t" >/dev/null 2>&1 || need+=("$t")
     done
     [ ${#need[@]} -eq 0 ] && return 0
-    echo -e "${YEL}正在安装缺少的依赖: ${need[*]}${NC}"
+    echo -e "${YEL}正在安装缺少的依�? ${need[*]}${NC}"
     local pkg="apt-get"; command -v apt >/dev/null 2>&1 && pkg="apt"
     $pkg update -qq >/dev/null 2>&1 || true
     for t in "${need[@]}"; do
@@ -177,7 +177,7 @@ check_deps() {
     done
     for t in nft tc jq curl crontab; do
         if ! command -v "$t" >/dev/null 2>&1; then
-            echo -e "${RED}依赖 $t 安装失败，请手动安装后重试${NC}"; exit 1
+            echo -e "${RED}依赖 $t 安装失败，请手动安装后重�?{NC}"; exit 1
         fi
     done
 }
@@ -193,7 +193,7 @@ install_self() {
         chmod +x "/usr/local/bin/$SHORTCUT"
     fi
 
-    # cron: 每分钟采集 + 开机自愈 (幂等) + 自动清理残留的"端口流量狗"任务
+    # cron: 每分钟采�?+ 开机自�?(幂等) + 自动清理残留�?端口流量�?任务
     local cur; cur=$(crontab -l 2>/dev/null || true)
     if ! echo "$cur" | grep -qF "$INSTALL_PATH --tick" || echo "$cur" | grep -q 'port-traffic-dog.sh'; then
         {
@@ -204,7 +204,7 @@ install_self() {
         } | grep -v '^$' | crontab - 2>/dev/null || true
     fi
 
-    # systemd: 开机自愈 + 关机前最后保存一次 (幂等)
+    # systemd: 开机自�?+ 关机前最后保存一�?(幂等)
     if [ ! -f "$SYSTEMD_UNIT" ]; then
         cat > "$SYSTEMD_UNIT" << EOF
 [Unit]
@@ -251,7 +251,7 @@ ensure_state() {
 }
 
 # ---------------------------------------------------------------
-# nftables 层
+# nftables �?
 # ---------------------------------------------------------------
 nft_ensure_base() {
     if ! nft list table inet $TBL >/dev/null 2>&1; then
@@ -300,9 +300,9 @@ nft_delete_port() {
     nft delete counter inet $TBL "c_${s}_out" 2>/dev/null || true
 }
 
-# 按 state 中的 blocked 标记重建阻断链（幂等）
-# 注意：必须以 CONF 的端口列表为准逐个查询,不能对 STATE 做 to_entries 遍历——
-# STATE 中存在 tg_last_sent 等数字类型的键,jq 对数字取 .blocked 会中途报错终止,
+# �?state 中的 blocked 标记重建阻断链（幂等�?
+# 注意：必须以 CONF 的端口列表为准逐个查询,不能�?STATE �?to_entries 遍历—�?
+# STATE 中存�?tg_last_sent 等数字类型的�?jq 对数字取 .blocked 会中途报错终�?
 # 导致排在其后的端口永远加不上 drop 规则(显示已阻断但实际可用)
 nft_rebuild_blocks() {
     nft flush chain inet $TBL block_in  2>/dev/null || true
@@ -321,7 +321,7 @@ nft_rebuild_blocks() {
 }
 
 # ---------------------------------------------------------------
-# tc 带宽限速层 (出站方向, 与原版一致)
+# tc 带宽限速层 (出站方向, 与原版一�?
 # ---------------------------------------------------------------
 get_iface() {
     local i; i=$(jq -r '.tc_iface // ""' "$CONF" 2>/dev/null)
@@ -357,7 +357,7 @@ tc_remove_port() {
              | grep -oE 'handle [0-9]+' | awk '{print $2}')
 }
 
-# 确保所有限速配置生效（幂等自愈, tick 内调用可应对重启后 tc 丢失）
+# 确保所有限速配置生效（幂等自愈, tick 内调用可应对重启�?tc 丢失�?
 tc_ensure_all() {
     local iface; iface=$(get_iface); [ -n "$iface" ] || return 0
     local rate_data
@@ -400,7 +400,7 @@ tc_ensure_all() {
 }
 
 # ---------------------------------------------------------------
-# 数据核心：增量采集 (tick)
+# 数据核心：增量采�?(tick)
 # ---------------------------------------------------------------
 port_total() {  # 按计费模式计算某端口应计流量
     local p="$1" ti to mode
@@ -540,9 +540,9 @@ _tick_body() {
 
     for p in $changed_blocks; do
         if [[ " $expected_blocks " =~ " $p " ]]; then
-            echo "$(bj_date '+%F %T') 端口 $p 流量超限已阻断" >> "$HIST"
+            echo "$(bj_date '+%F %T') 端口 $p 流量超限已阻�? >> "$HIST"
         else
-            echo "$(bj_date '+%F %T') 端口 $p 用量低于配额，解除阻断" >> "$HIST"
+            echo "$(bj_date '+%F %T') 端口 $p 用量低于配额，解除阻�? >> "$HIST"
         fi
     done
 
@@ -598,19 +598,19 @@ _tick_body() {
     fi
 }
 
-# do_tick = 带锁的采集入口：子shell内短暂持锁，执行完即释放。
-# 菜单/状态查询都经由此函数，不再出现"菜单开着就长期占锁、cron全被跳过"的问题
+# do_tick = 带锁的采集入口：子shell内短暂持锁，执行完即释放�?
+# 菜单/状态查询都经由此函数，不再出现"菜单开着就长期占锁、cron全被跳过"的问�?
 do_tick() {
     ( flock -w 60 8 || exit 0; _tick_body ) 8>>"$LOCK"
 }
 
-# 重置某端口：写历史 + 清零累计 + 基线校准 + 解除阻断（纯软重置，不动内核计数器）
+# 重置某端口：写历�?+ 清零累计 + 基线校准 + 解除阻断（纯软重置，不动内核计数器）
 archive_and_zero() {
     local p="$1" reason="$2" ti to total
     ti=$(jq -r --arg p "$p" '.[$p].total_in  // 0' "$STATE")
     to=$(jq -r --arg p "$p" '.[$p].total_out // 0' "$STATE")
     total=$(port_total "$p")
-    echo "$(bj_date '+%F %T') 端口 $p $reason | 周期流量 $(fmt_bytes "$total") (入 $(fmt_bytes "$ti") / 出 $(fmt_bytes "$to"))" >> "$HIST"
+    echo "$(bj_date '+%F %T') 端口 $p $reason | 周期流量 $(fmt_bytes "$total") (�?$(fmt_bytes "$ti") / �?$(fmt_bytes "$to"))" >> "$HIST"
     local cur ci co
     cur=$(nft_read_counter "$p"); ci=${cur% *}; co=${cur#* }
     jset "$STATE" --arg p "$p" --argjson ci "$ci" --argjson co "$co" \
@@ -618,7 +618,7 @@ archive_and_zero() {
 }
 
 # ---------------------------------------------------------------
-# 通知层 (Telegram + 企业微信, 独立开关与间隔)
+# 通知�?(Telegram + 企业微信, 独立开关与间隔)
 # ---------------------------------------------------------------
 tg_send() {
     local msg="$1" label="${2:-状态通知}" token chat resp
@@ -631,7 +631,7 @@ tg_send() {
         --data-urlencode "parse_mode=Markdown" \
         --data-urlencode "text=${msg}" 2>/dev/null)
     if echo "$resp" | grep -q '"ok":true'; then
-        notify_log "[Telegram] 发送成功: $label"
+        notify_log "[Telegram] 发送成�? $label"
         return 0
     fi
     # Markdown 解析失败(如内容含特殊字符)时降级为纯文本重发，通知绝不静默丢失
@@ -640,10 +640,10 @@ tg_send() {
         --data-urlencode "chat_id=${chat}" \
         --data-urlencode "text=${msg}" 2>/dev/null)
     if echo "$resp" | grep -q '"ok":true'; then
-        notify_log "[Telegram] 发送成功(纯文本降级): $label"
+        notify_log "[Telegram] 发送成�?纯文本降�?: $label"
         return 0
     else
-        notify_log "[Telegram] 发送失败: $label ${resp:0:120}"
+        notify_log "[Telegram] 发送失�? $label ${resp:0:120}"
         return 1
     fi
 }
@@ -656,10 +656,10 @@ wecom_send() {
     resp=$(curl -s --connect-timeout 5 --max-time 10 \
         -H 'Content-Type: application/json' -d "$payload" "$url" 2>/dev/null)
     if echo "$resp" | grep -q '"errcode":0'; then
-        notify_log "[企业微信] 发送成功: $label"
+        notify_log "[企业微信] 发送成�? $label"
         return 0
     else
-        notify_log "[企业微信] 发送失败: $label ${resp:0:120}"
+        notify_log "[企业微信] 发送失�? $label ${resp:0:120}"
         return 1
     fi
 }
@@ -697,7 +697,7 @@ build_status_message() {
                 if [ "$now_day" -ge "$rd" ]; then
                     nm=$((now_month + 1)); [ $nm -gt 12 ] && nm=1
                 fi
-                tag="${tag}[${nm}月${rd}日重置]"
+                tag="${tag}[${nm}�?{rd}日重置]"
             fi
             [ "$pct" -ge 100 ] && tag="${tag}[已超限]"
             [ "$(jq -r --arg p "$p" '.[$p].blocked // false' "$STATE")" = "true" ] && tag="${tag}[已阻断]"
@@ -705,32 +705,32 @@ build_status_message() {
             tag="${tag}[${mode_cn}无限制]"
         fi
         [ "$rate" -gt 0 ] 2>/dev/null && tag="${tag}[限制带宽$(fmt_rate "$rate")]"
-        line="${line}端口:${p} | 总流量:$(fmt_bytes "$tt") | 上行(入站): $(fmt_bytes "$ti") | 下行(出站):$(fmt_bytes "$to") | ${tag}
+        line="${line}端口:${p} | 总流�?$(fmt_bytes "$tt") | 上行(入站): $(fmt_bytes "$ti") | 下行(出站):$(fmt_bytes "$to") | ${tag}
 "
     done < <(jq -r '.ports | keys[]' "$CONF" 2>/dev/null | sort -n)
     if [ "$ch" = "tg" ]; then
         # Telegram: 排版与原版对齐——状态行下细分隔线、代码块内先空一行再列端口、块后分隔线
-        printf '🐾 端口流量管家 v%s | ⏰ %s
-每一字节都记在账上 | 快捷命令: %s
+        printf '🐾 端口流量管家 v%s | �?%s
+每一字节都记在账�?| 快捷命令: %s
 ---
-状态: 监控中 | 守护端口: %d个 | 端口总流量: %s
+状�? 监控�?| 守护端口: %d�?| 端口总流�? %s
 ──────────────────────────
 ```
 
 %s```
 ──────────────────────────
-🔗 服务器: %s' \
+🔗 服务�? %s' \
             "$VERSION" "$(bj_date '+%F %T')" "$SHORTCUT" \
             "$pc" "$(fmt_bytes "$total_all")" "$line" "$(md_escape "$name")"
     else
-        printf '🐾 端口流量管家 v%s | ⏰ %s
-每一字节都记在账上 | 快捷命令: %s
+        printf '🐾 端口流量管家 v%s | �?%s
+每一字节都记在账�?| 快捷命令: %s
 ---
-状态: 监控中 | 守护端口: %d个 | 端口总流量: %s
+状�? 监控�?| 守护端口: %d�?| 端口总流�? %s
 ──────────────────────────
 
 %s──────────────────────────
-🔗 服务器: %s' \
+🔗 服务�? %s' \
             "$VERSION" "$(bj_date '+%F %T')" "$SHORTCUT" \
             "$pc" "$(fmt_bytes "$total_all")" "$line" "$name"
     fi
@@ -773,7 +773,7 @@ list_ports() {  # 打印端口列表, 填充全局数组 PORT_LIST
                 if [ "$now_day" -ge "$rd" ]; then
                     nm=$((now_month + 1)); [ $nm -gt 12 ] && nm=1
                 fi
-                tags="${tags}[${nm}月${rd}日重置]"
+                tags="${tags}[${nm}�?{rd}日重置]"
             fi
             [ "$pct" -ge 100 ] && tags="${tags}[已超限]"
             [ "$blocked" = "true" ] && tags="${tags}${RED}[已阻断]${NC}${YEL}"
@@ -781,7 +781,7 @@ list_ports() {  # 打印端口列表, 填充全局数组 PORT_LIST
             tags="${tags}[${mode_cn}无限制]"
         fi
         [ "$rate" -gt 0 ] 2>/dev/null && tags="${tags}[限制带宽$(fmt_rate "$rate")]"
-        echo -e "$i. 端口:${GRN}$p${NC} | 总流量:${GRN}$(fmt_bytes "$tt")${NC} | 上行(入站): ${GRN}$(fmt_bytes "$ti")${NC} | 下行(出站):${GRN}$(fmt_bytes "$to")${NC} | ${YEL}$tags${NC}"
+        echo -e "$i. 端口:${GRN}$p${NC} | 总流�?${GRN}$(fmt_bytes "$tt")${NC} | 上行(入站): ${GRN}$(fmt_bytes "$ti")${NC} | 下行(出站):${GRN}$(fmt_bytes "$to")${NC} | ${YEL}$tags${NC}"
         i=$((i+1))
     done <<< "$port_info"
     [ ${#PORT_LIST[@]} -gt 0 ]
@@ -801,7 +801,7 @@ menu_add_ports() {
     ss -tulnp 2>/dev/null | awk 'NR>1 {split($5,a,":"); prog=$7; gsub(/.*"/,"",prog); gsub(/".*/,"",prog); if(a[length(a)]!="") print a[length(a)], prog}' \
         | sort -un | head -20 | awk '{printf "  %-8s %s\n", $1, $2}' || true
     echo
-    read -rp "输入端口(逗号分隔, 端口段用 - 如 100-200): " input
+    read -rp "输入端口(逗号分隔, 端口段用 - �?100-200): " input
     local tokens=() t
     IFS=',' read -ra tokens <<< "$input"
     local added=()
@@ -812,17 +812,17 @@ menu_add_ports() {
             echo -e "${RED}无效端口: $t (跳过)${NC}"; continue
         fi
         if jq -e --arg p "$t" '.ports[$p]' "$CONF" >/dev/null 2>&1; then
-            echo -e "${YEL}端口 $t 已在监控中 (跳过)${NC}"; continue
+            echo -e "${YEL}端口 $t 已在监控�?(跳过)${NC}"; continue
         fi
         added+=("$t")
     done
     [ ${#added[@]} -eq 0 ] && { echo "没有可添加的端口"; pause; return; }
 
-    echo; echo "统计模式: 1.双向 总流量=(入+出)×2 (与原版一致,匹配中转机账单)  2.单向 仅统计出站"
+    echo; echo "统计模式: 1.双向 总流�?(�?�?×2 (与原版一�?匹配中转机账�?  2.单向 仅统计出�?
     read -rp "选择(回车默认1): " m
     local billing="double"; [ "$m" = "2" ] && billing="single"
 
-    read -rp "月度流量配额(如 100GB/1TB, 0=不限, 回车默认0): " q
+    read -rp "月度流量配额(�?100GB/1TB, 0=不限, 回车默认0): " q
     local qb=0
     if [ -n "$q" ] && [ "$q" != "0" ]; then
         qb=$(parse_size "$q")
@@ -830,17 +830,17 @@ menu_add_ports() {
     fi
     local rd=0
     if [ "$qb" -gt 0 ]; then
-        read -rp "每月自动重置日(1-31, 回车默认1, 0=不自动重置): " rd
+        read -rp "每月自动重置�?1-31, 回车默认1, 0=不自动重�?: " rd
         rd=${rd:-1}
         [[ "$rd" =~ ^[0-9]+$ ]] && [ "$rd" -le 31 ] || rd=1
     fi
-    read -rp "带宽限速(如 10Mbps/500Kbps, 0=不限, 回车默认0): " rt
+    read -rp "带宽限�?�?10Mbps/500Kbps, 0=不限, 回车默认0): " rt
     local kbps=0
     if [ -n "$rt" ] && [ "$rt" != "0" ]; then
         kbps=$(parse_rate_kbps "$rt")
-        [ "$kbps" -eq 0 ] && echo -e "${YEL}限速格式无效，按不限处理${NC}"
+        [ "$kbps" -eq 0 ] && echo -e "${YEL}限速格式无效，按不限处�?{NC}"
     fi
-    read -rp "备注(可留空, 稍后可改): " remark
+    read -rp "备注(可留�? 稍后可改): " remark
 
     local now_ym now_day
     now_ym=$(bj_date +%Y-%m); now_day=$(bj_date +%-d)
@@ -855,7 +855,7 @@ menu_add_ports() {
         jset "$STATE" --arg p "$t" --arg ym "$init_ym"             '.[$p] = {total_in:0, total_out:0, last_in:0, last_out:0, blocked:false, last_reset_ym:$ym}'
         nft_ensure_port "$t"
         [ "$kbps" -gt 0 ] && alloc_tc_id "$t" >/dev/null
-        echo -e "${GRN}端口 $t 已加入监控${NC}"
+        echo -e "${GRN}端口 $t 已加入监�?{NC}"
     done
     tc_ensure_all
     ) 8>>"$LOCK"
@@ -877,7 +877,7 @@ menu_del_ports() {
         nft_delete_port "$p"
         jset "$CONF"  --arg p "$p" 'del(.ports[$p])'
         jset "$STATE" --arg p "$p" 'del(.[$p])'
-        echo -e "${GRN}已删除端口 $p${NC}"
+        echo -e "${GRN}已删除端�?$p${NC}"
     done
     nft_rebuild_blocks
     tc_ensure_all
@@ -893,13 +893,13 @@ menu_remark() {
     [ -z "$p" ] && { echo -e "${RED}无效选择${NC}"; pause; return; }
     local cur; cur=$(jq -r --arg p "$p" '.ports[$p].remark // ""' "$CONF")
     echo "端口 $p 当前备注: ${cur:-（无）}"
-    echo "输入新备注 (输入 - 删除备注; 回车保持原样)"
+    echo "输入新备�?(输入 - 删除备注; 回车保持原样)"
     read -rp "> " r
     if [ -z "$r" ]; then
-        echo "已保持原样"
+        echo "已保持原�?
     elif [ "$r" = "-" ]; then
         ( flock -w 60 8 || exit 1; jset "$CONF" --arg p "$p" '.ports[$p].remark = ""'; ) 8>>"$LOCK"
-        echo -e "${GRN}已删除端口 $p 的备注${NC}"
+        echo -e "${GRN}已删除端�?$p 的备�?{NC}"
     else
         ( flock -w 60 8 || exit 1; jset "$CONF" --arg p "$p" --arg r "$r" '.ports[$p].remark = $r'; ) 8>>"$LOCK"
         echo -e "${GRN}端口 $p 备注已更新为: $r${NC}"
@@ -918,9 +918,9 @@ menu_quota() {
     old_rd=$(jq -r --arg p "$p" '.ports[$p].reset_day // 0' "$CONF")
     
     local old_q_str
-    if [ "$old_qb" -eq 0 ]; then old_q_str="无"; else old_q_str=$(fmt_bytes "$old_qb"); fi
+    if [ "$old_qb" -eq 0 ]; then old_q_str="�?; else old_q_str=$(fmt_bytes "$old_qb"); fi
     
-    read -rp "端口 $p 新配额(原: $old_q_str, 回车保持原样, 0=取消): " q
+    read -rp "端口 $p 新配�?�? $old_q_str, 回车保持原样, 0=取消): " q
     local qb="$old_qb"
     if [ -n "$q" ]; then
         if [ "$q" = "0" ]; then
@@ -934,8 +934,8 @@ menu_quota() {
     local rd="$old_rd"
     if [ "$qb" -gt 0 ]; then
         local old_rd_str="$old_rd"
-        [ "$old_rd" -eq 0 ] && old_rd_str="不自动"
-        read -rp "每月自动重置日(1-31, 原: $old_rd_str, 回车保持原样, 0=不自动): " input_rd
+        [ "$old_rd" -eq 0 ] && old_rd_str="不自�?
+        read -rp "每月自动重置�?1-31, �? $old_rd_str, 回车保持原样, 0=不自�?: " input_rd
         if [ -n "$input_rd" ]; then
             rd="$input_rd"
             [[ "$rd" =~ ^[0-9]+$ ]] && [ "$rd" -le 31 ] || rd=1
@@ -955,26 +955,26 @@ menu_quota() {
         jset "$STATE" --arg p "$p" '.[$p].last_reset_ym = ""'
     fi
     ) 8>>"$LOCK"
-    # 立即重算：调低配额低于已用量时当场阻断
+    # 立即重算：调低配额低于已用量时当场阻�?
     do_tick
     local used blocked
     used=$(port_total "$p")
     blocked=$(jq -r --arg p "$p" '.[$p].blocked // false' "$STATE")
-    echo -e "${GRN}已更新${NC} 当前已用 $(fmt_bytes "$used")$( [ "$blocked" = "true" ] && echo -e " ${RED}[已触发阻断]${NC}" )"
+    echo -e "${GRN}已更�?{NC} 当前已用 $(fmt_bytes "$used")$( [ "$blocked" = "true" ] && echo -e " ${RED}[已触发阻断]${NC}" )"
     pause
 }
 
 menu_rate() {
-    echo -e "${BLU}=== 带宽限速管理 (出站方向) ===${NC}"
-    echo -e "限速网卡: ${GRN}$(get_iface)${NC} (可在 $CONF 的 tc_iface 字段指定)"
+    echo -e "${BLU}=== 带宽限速管�?(出站方向) ===${NC}"
+    echo -e "限速网�? ${GRN}$(get_iface)${NC} (可在 $CONF �?tc_iface 字段指定)"
     list_ports || { echo "暂无监控端口"; pause; return; }
     echo
     local p; p=$(pick_port)
     [ -z "$p" ] && { echo -e "${RED}无效选择${NC}"; pause; return; }
     local old_kbps old_kbps_str
     old_kbps=$(jq -r --arg p "$p" '.ports[$p].rate_kbps // 0' "$CONF")
-    if [ "$old_kbps" -eq 0 ]; then old_kbps_str="无"; else old_kbps_str=$(fmt_rate "$old_kbps"); fi
-    read -rp "端口 $p 新限速(原: $old_kbps_str, 回车保持原样, 0=取消): " rt
+    if [ "$old_kbps" -eq 0 ]; then old_kbps_str="�?; else old_kbps_str=$(fmt_rate "$old_kbps"); fi
+    read -rp "端口 $p 新限�?�? $old_kbps_str, 回车保持原样, 0=取消): " rt
     local kbps="$old_kbps"
     if [ -n "$rt" ]; then
         if [ "$rt" = "0" ]; then
@@ -989,7 +989,7 @@ menu_rate() {
         tc_remove_port "$p"
         jset "$CONF" --arg p "$p" '.ports[$p].rate_kbps = 0'
         ) 8>>"$LOCK"
-        echo -e "${GRN}端口 $p 已取消限速${NC}"
+        echo -e "${GRN}端口 $p 已取消限�?{NC}"
     else
         ( flock -w 60 8 || exit 1
         jset "$CONF" --arg p "$p" --argjson k "$kbps" '.ports[$p].rate_kbps = $k'
@@ -1012,7 +1012,7 @@ menu_reset() {
     ( flock -w 60 8 || exit 1
     for p in "${targets[@]}"; do
         archive_and_zero "$p" "手动重置"
-        echo -e "${GRN}端口 $p 已重置${NC}"
+        echo -e "${GRN}端口 $p 已重�?{NC}"
     done
     nft_rebuild_blocks
     ) 8>>"$LOCK"
@@ -1020,12 +1020,12 @@ menu_reset() {
 }
 
 menu_history() {
-    echo -e "${BLU}=== 最近 20 条历史记录 ===${NC}"
+    echo -e "${BLU}=== 最�?20 条历史记�?===${NC}"
     tail -20 "$HIST" 2>/dev/null || echo "暂无记录"
     pause
 }
 
-notify_channel_menu() {  # $1=渠道key(tg/wecom) $2=渠道名 $3=发送函数
+notify_channel_menu() {  # $1=渠道key(tg/wecom) $2=渠道�?$3=发送函�?
     local ch="$1" cname="$2" sender="$3"
     while true; do
         clear 2>/dev/null || true
@@ -1040,15 +1040,15 @@ notify_channel_menu() {  # $1=渠道key(tg/wecom) $2=渠道名 $3=发送函数
         st_on="$([ "$on" = "true" ] && echo -e "${GRN}[开启]${NC}" || echo -e "${YEL}[关闭]${NC}")"
         st_cfg="$([ -n "$cfg" ] && echo "[已配置]" || echo "[未配置]")"
         echo -e "${BLU}=== ${cname}通知配置 ===${NC}"
-        echo -e "当前状态: $st_on | $st_cfg | 状态通知: 每$(fmt_interval "$itv")"
+        echo -e "当前状�? $st_on | $st_cfg | 状态通知: �?(fmt_interval "$itv")"
         echo
         if [ "$ch" = "tg" ]; then
-            echo "1. 配置Bot信息 (Token + Chat ID + 服务器名称)"
+            echo "1. 配置Bot信息 (Token + Chat ID + 服务器名�?"
         else
-            echo "1. 配置Webhook信息 (URL + 服务器名称)"
+            echo "1. 配置Webhook信息 (URL + 服务器名�?"
         fi
         echo "2. 通知设置管理"
-        echo "3. 发送测试消息"
+        echo "3. 发送测试消�?
         echo "4. 查看通知日志"
         echo "0. 返回上级菜单"
         echo
@@ -1058,28 +1058,28 @@ notify_channel_menu() {  # $1=渠道key(tg/wecom) $2=渠道名 $3=发送函数
                 if [ "$ch" = "tg" ]; then
                     read -rp "Bot Token: " token
                     read -rp "Chat ID: " chat
-                    read -rp "服务器名称(回车用主机名): " name
+                    read -rp "服务器名�?回车用主机名): " name
                     jset "$CONF" --arg t "$token" --arg c "$chat" --arg n "$name" \
                         '.tg.bot_token=$t | .tg.chat_id=$c | .tg.server_name=$n | .tg.enabled=true'
                 else
                     read -rp "Webhook URL: " url
-                    read -rp "服务器名称(回车用主机名): " name
+                    read -rp "服务器名�?回车用主机名): " name
                     jset "$CONF" --arg u "$url" --arg n "$name" \
                         '.wecom.webhook_url=$u | .wecom.server_name=$n | .wecom.enabled=true'
                 fi
-                echo -e "${GRN}已保存并开启${NC}"; sleep 1
+                echo -e "${GRN}已保存并开�?{NC}"; sleep 1
                 ;;
             2) notify_settings_menu "$ch" "$cname" ;;
             3)
                 if $sender "$(build_status_message "$ch")" "测试消息"; then
-                    echo -e "${GRN}测试消息已发送${NC}"
+                    echo -e "${GRN}测试消息已发�?{NC}"
                 else
-                    echo -e "${RED}发送失败，请检查配置/网络，详情见通知日志${NC}"
+                    echo -e "${RED}发送失败，请检查配�?网络，详情见通知日志${NC}"
                 fi
                 pause
                 ;;
             4)
-                echo -e "${BLU}=== 最近 20 条通知日志 ===${NC}"
+                echo -e "${BLU}=== 最�?20 条通知日志 ===${NC}"
                 tail -20 "$NLOG" 2>/dev/null || echo "暂无记录"
                 pause
                 ;;
@@ -1088,12 +1088,12 @@ notify_channel_menu() {  # $1=渠道key(tg/wecom) $2=渠道名 $3=发送函数
     done
 }
 
-notify_settings_menu() {  # $1=渠道key $2=渠道名
+notify_settings_menu() {  # $1=渠道key $2=渠道�?
     local ch="$1" cname="$2"
     while true; do
         echo -e "${BLU}=== ${cname}通知设置管理 ===${NC}"
         echo "1. 状态通知间隔"
-        echo "2. 开启/关闭切换"
+        echo "2. 开�?关闭切换"
         echo "0. 返回上级菜单"
         echo
         read -rp "请选择操作 [0-2]: " s
@@ -1103,7 +1103,7 @@ notify_settings_menu() {  # $1=渠道key $2=渠道名
                 echo -e "${BLU}=== 状态通知间隔设置 ===${NC}"
                 echo "当前间隔: $(fmt_interval "$itv")"
                 echo
-                echo "请选择状态通知发送间隔:"
+                echo "请选择状态通知发送间�?"
                 echo "1. 1分钟    2. 15分钟   3. 30分钟   4. 1小时"
                 echo "5. 2小时    6. 6小时    7. 12小时   8. 24小时"
                 read -rp "请选择(回车保持原样) [1-8]: " iv
@@ -1120,10 +1120,10 @@ notify_settings_menu() {  # $1=渠道key $2=渠道名
                 local on; on=$(jq -r ".${ch}.enabled" "$CONF")
                 if [ "$on" = "true" ]; then
                     jset "$CONF" ".${ch}.enabled = false"
-                    echo -e "${YEL}${cname}通知已关闭${NC}"
+                    echo -e "${YEL}${cname}通知已关�?{NC}"
                 else
                     jset "$CONF" ".${ch}.enabled = true"
-                    echo -e "${GRN}${cname}通知已开启${NC}"
+                    echo -e "${GRN}${cname}通知已开�?{NC}"
                 fi
                 ;;
             0) return ;;
@@ -1139,7 +1139,7 @@ menu_notify() {
         tg_on=$(jq -r '.tg.enabled' "$CONF"); wc_on=$(jq -r '.wecom.enabled' "$CONF")
         echo -e "1. Telegram机器人通知 $([ "$tg_on" = "true" ] && echo -e "${GRN}[开启]${NC}" || echo "[关闭]")"
         echo -e "2. 企业微信机器人通知 $([ "$wc_on" = "true" ] && echo -e "${GRN}[开启]${NC}" || echo "[关闭]")"
-        echo "0. 返回主菜单"
+        echo "0. 返回主菜�?
         echo
         read -rp "请选择操作 [0-2]: " c
         case "$c" in
@@ -1152,9 +1152,9 @@ menu_notify() {
 
 menu_export_import() {
     echo -e "${BLU}=== 导出 / 导入 ===${NC}"
-    echo "1. 导出配置与流量数据"
-    echo "2. 导入配置与流量数据"
-    echo "3. 从\"端口流量狗\"一键迁移"
+    echo "1. 导出配置与流量数�?
+    echo "2. 导入配置与流量数�?
+    echo "3. 从\"端口流量狗\"一键迁�?
     echo "0. 返回"
     read -rp "选择: " c
     case "$c" in
@@ -1163,13 +1163,13 @@ menu_export_import() {
             jq -n --arg v "$VERSION" --slurpfile c "$CONF" --slurpfile s "$STATE" \
                   --arg h "$(tail -200 "$HIST" 2>/dev/null || true)" \
                 '{app:"ptk", version:$v, exported:(now|todate), config:$c[0], state:$s[0], history:$h}' > "$f" \
-                && echo -e "${GRN}已导出: $f${NC}" \
+                && echo -e "${GRN}已导�? $f${NC}" \
                 || echo -e "${RED}导出失败${NC}"
             ;;
         2)
             read -rp "备份文件路径: " f
             if [ ! -f "$f" ] || ! jq -e '.app == "ptk"' "$f" >/dev/null 2>&1; then
-                echo -e "${RED}文件不存在或不是有效的 ptk 备份${NC}"; pause; return
+                echo -e "${RED}文件不存在或不是有效�?ptk 备份${NC}"; pause; return
             fi
             ( flock -w 60 8 || exit 1
             jq '.config' "$f" > "$CONF.tmp" && mv "$CONF.tmp" "$CONF"
@@ -1185,7 +1185,7 @@ menu_export_import() {
     pause
 }
 
-# 导入后基线校准：把 last_in/out 对齐到当前内核计数器，防止产生虚假增量
+# 导入后基线校准：�?last_in/out 对齐到当前内核计数器，防止产生虚假增�?
 calibrate_baselines() {
     local p cur ci co
     while IFS= read -r p; do
@@ -1197,7 +1197,7 @@ calibrate_baselines() {
     done < <(jq -r '.ports | keys[]' "$CONF" 2>/dev/null)
 }
 
-# 从端口流量狗迁移：端口配置 + 当前已统计流量
+# 从端口流量狗迁移：端口配�?+ 当前已统计流�?
 migrate_from_dog() {
     if [ ! -f "$DOG_CONF" ]; then
         echo -e "${RED}未找到端口流量狗配置 ($DOG_CONF)${NC}"; return
@@ -1225,7 +1225,7 @@ migrate_from_dog() {
         remark=$(jq -r --arg p "$p" '.ports[$p].remark // ""' "$DOG_CONF")
         [ "$remark" = "null" ] && remark=""
 
-        # 读取原版当前已统计流量：优先内核计数器，其次其备份文件
+        # 读取原版当前已统计流量：优先内核计数器，其次其备份文�?
         s=$(safe_name "$p")
         ti=$(nft list counter "$dog_fam" "$dog_tbl" "port_${s}_in" 2>/dev/null | grep -oE 'bytes [0-9]+' | awk '{print $2}')
         to=$(nft list counter "$dog_fam" "$dog_tbl" "port_${s}_out" 2>/dev/null | grep -oE 'bytes [0-9]+' | awk '{print $2}')
@@ -1237,7 +1237,7 @@ migrate_from_dog() {
         [[ "$ti" =~ ^[0-9]+$ ]] || ti=0
         [[ "$to" =~ ^[0-9]+$ ]] || to=0
         # 原版双向模式的计数器在规则层面已×2，导入时还原为真实字节，
-        # 否则本脚本计费层再×2会变成×4
+        # 否则本脚本计费层再�?会变成�?
         if [ "$billing" = "double" ]; then
             ti=$((ti / 2)); to=$((to / 2))
         fi
@@ -1254,7 +1254,7 @@ migrate_from_dog() {
             '.[$p] = {total_in:$ti, total_out:$to, last_in:0, last_out:0, blocked:false, last_reset_ym:$ym}'
         nft_ensure_port "$p"
         [ "$kbps" -gt 0 ] && alloc_tc_id "$p" >/dev/null
-        echo -e "${GRN}已迁移端口 $p (入 $(fmt_bytes "$ti") / 出 $(fmt_bytes "$to"))${NC}"
+        echo -e "${GRN}已迁移端�?$p (�?$(fmt_bytes "$ti") / �?$(fmt_bytes "$to"))${NC}"
         count=$((count+1))
     done < <(jq -r '.ports | keys[]' "$DOG_CONF" 2>/dev/null)
 
@@ -1266,8 +1266,8 @@ migrate_from_dog() {
     if [ "$count" -gt 0 ]; then
         do_tick
         echo
-        echo -e "${GRN}迁移完成，共 $count 个端口${NC}"
-        echo -e "${YEL}重要：请尽快卸载端口流量狗(原脚本菜单6)，否则它残留的配额阻断/限速规则仍会生效，可能干扰本脚本${NC}"
+        echo -e "${GRN}迁移完成，共 $count 个端�?{NC}"
+        echo -e "${YEL}重要：请尽快卸载端口流量�?原脚本菜�?)，否则它残留的配额阻�?限速规则仍会生效，可能干扰本脚�?{NC}"
     else
         echo "没有迁移任何端口"
     fi
@@ -1275,9 +1275,9 @@ migrate_from_dog() {
 
 menu_uninstall() {
     echo -e "${RED}=== 卸载 ===${NC}"
-    read -rp "确认卸载？将移除监控规则/限速/定时任务/systemd (yes 确认): " c
-    [ "$c" = "yes" ] || { echo "已取消"; pause; return; }
-    do_tick 2>/dev/null || true   # 最后存一次
+    read -rp "确认卸载？将移除监控规则/限�?定时任务/systemd (yes 确认): " c
+    [ "$c" = "yes" ] || { echo "已取�?; pause; return; }
+    do_tick 2>/dev/null || true   # 最后存一�?
     local iface; iface=$(get_iface)
     if [ -n "$iface" ] && [ "$(jq -r '.tc_root_owned // false' "$STATE" 2>/dev/null)" = "true" ] \
        && tc qdisc show dev "$iface" 2>/dev/null | grep -q "htb 1:"; then
@@ -1288,8 +1288,8 @@ menu_uninstall() {
     systemctl disable --now ptk-save.service >/dev/null 2>&1 || true
     rm -f "$SYSTEMD_UNIT"; systemctl daemon-reload >/dev/null 2>&1 || true
     rm -f "/usr/local/bin/$SHORTCUT"
-    read -rp "是否同时删除配置与流量数据? (yes=删除, 回车保留): " d
-    if [ "$d" = "yes" ]; then rm -rf "$CONF_DIR"; echo "配置数据已删除"; else echo "配置数据保留在 $CONF_DIR"; fi
+    read -rp "是否同时删除配置与流量数�? (yes=删除, 回车保留): " d
+    if [ "$d" = "yes" ]; then rm -rf "$CONF_DIR"; echo "配置数据已删�?; else echo "配置数据保留�?$CONF_DIR"; fi
     rm -f "$INSTALL_PATH"
     echo -e "${GRN}卸载完成${NC}"
     exit 0
@@ -1300,7 +1300,7 @@ main_menu() {
         clear 2>/dev/null || true
         do_tick   # 进主界面先采集，保证显示实时数据
         echo -e "${BLU}=== 端口流量管家 v$VERSION ===${NC}"
-        echo -e "${GRN}每一字节都记在账上 | 快捷命令: $SHORTCUT${NC}"
+        echo -e "${GRN}每一字节都记在账�?| 快捷命令: $SHORTCUT${NC}"
         echo
         local _pc _sum
         read -r _pc _sum < <(jq -r --slurpfile state "$STATE" '
@@ -1316,18 +1316,18 @@ main_menu() {
             "\($pc) \($sum)"
         ' "$CONF" 2>/dev/null)
         
-        echo -e "${GRN}状态: 监控中${NC} | ${BLU}守护端口: ${_pc}个${NC} | ${YEL}端口总流量: $(fmt_bytes "$_sum")${NC}"
+        echo -e "${GRN}状�? 监控�?{NC} | ${BLU}守护端口: ${_pc}�?{NC} | ${YEL}端口总流�? $(fmt_bytes "$_sum")${NC}"
         echo "────────────────────────────────────────────────────────"
         if ! list_ports; then
             echo -e "${YEL}暂无监控端口${NC}"
         fi
         echo "────────────────────────────────────────────────────────"
         echo -e "${BLU}1.${NC} 添加端口监控      ${BLU}2.${NC} 删除端口监控"
-        echo -e "${BLU}3.${NC} 备注管理(增改删)  ${BLU}4.${NC} 配额管理"
-        echo -e "${BLU}5.${NC} 带宽限速管理      ${BLU}6.${NC} 流量重置"
+        echo -e "${BLU}3.${NC} 备注管理(增改�?  ${BLU}4.${NC} 配额管理"
+        echo -e "${BLU}5.${NC} 带宽限速管�?     ${BLU}6.${NC} 流量重置"
         echo -e "${BLU}7.${NC} 历史记录          ${BLU}8.${NC} 通知管理(TG/企业微信)"
         echo -e "${BLU}9.${NC} 导出/导入/迁移    ${BLU}10.${NC} 卸载"
-        echo -e "${BLU}0.${NC} 退出"
+        echo -e "${BLU}0.${NC} 退�?
         echo
         read -rp "请选择 [0-10]: " choice
         case "$choice" in
@@ -1348,23 +1348,23 @@ main_menu() {
 }
 
 # ---------------------------------------------------------------
-# 自动更新 (从 GitHub 获取最新脚本)
+# 自动更新 (�?GitHub 获取最新脚�?
 # ---------------------------------------------------------------
 do_update() {
     local REPO_URL="https://raw.githubusercontent.com/shangusl/port-traffic-keeper/main/ptk.sh"
     
-    echo -e "${BLU}正在检查更新并下载最新版本...${NC}"
+    echo -e "${BLU}正在检查更新并下载最新版�?..${NC}"
     
     local tmp_file="/tmp/ptk_update_$$.sh"
     if ! curl -sSL "$REPO_URL" -o "$tmp_file"; then
-        echo -e "${RED}下载失败，请检查网络或 URL 是否正确。${NC}"
+        echo -e "${RED}下载失败，请检查网络或 URL 是否正确�?{NC}"
         rm -f "$tmp_file"
         exit 1
     fi
     
-    # 简单的完整性检查
+    # 简单的完整性检�?
     if ! grep -q "端口流量管家" "$tmp_file"; then
-        echo -e "${RED}下载的文件内容似乎不正确，更新终止。${NC}"
+        echo -e "${RED}下载的文件内容似乎不正确，更新终止�?{NC}"
         rm -f "$tmp_file"
         exit 1
     fi
@@ -1373,8 +1373,8 @@ do_update() {
     chmod +x "$tmp_file"
     mv -f "$tmp_file" "$INSTALL_PATH"
     
-    echo -e "${GRN}更新成功！当前版本已替换为 GitHub 上的最新版。${NC}"
-    echo -e "${YEL}请重新运行 ptk 命令进入主菜单。${NC}"
+    echo -e "${GRN}更新成功！当前版本已替换�?GitHub 上的最新版�?{NC}"
+    echo -e "${YEL}请重新运�?ptk 命令进入主菜单�?{NC}"
 }
 
 # ---------------------------------------------------------------
@@ -1408,13 +1408,13 @@ case "${1:-}" in
     --tick)
         check_root
         [ -f "$CONF" ] || exit 0
-        # 非阻塞短锁：上一轮还没跑完就跳过本轮，避免任务堆积
+        # 非阻塞短锁：上一轮还没跑完就跳过本轮，避免任务堆�?
         ( flock -n 8 || exit 0; _tick_body ) 8>>"$LOCK"
         exit 0
         ;;
     --status)
         check_root
-        [ -f "$CONF" ] || { echo "尚未初始化"; exit 0; }
+        [ -f "$CONF" ] || { echo "尚未初始�?; exit 0; }
         do_tick
         list_ports || echo "暂无监控端口"
         exit 0
